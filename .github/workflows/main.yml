@@ -1,0 +1,57 @@
+
+name: GTA PRO FACCAO - Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compilar Launcher Android
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Extrair projeto Android
+        run: |
+          unzip -q GTA_PRO_FACCAO_LAUNCHER_COM_BUILD_NA_NUVEM.zip -d launcher_src
+
+      - name: Compilar APK
+        run: |
+          WRAPPER=$(find launcher_src -type f -name gradlew | head -n 1)
+
+          if [ -z "$WRAPPER" ]; then
+            echo "ERRO: arquivo gradlew nao encontrado no ZIP."
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$WRAPPER")
+
+          cd "$PROJECT_DIR"
+
+          chmod +x gradlew
+
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTA-PRO-FACCAO-APK
+          path: launcher_src/**/build/outputs/apk/**/*.apk
+          if-no-files-found: error
