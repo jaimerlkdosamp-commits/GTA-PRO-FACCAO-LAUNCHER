@@ -19,39 +19,43 @@ jobs:
       - name: Baixar repositorio
         uses: actions/checkout@v4
 
-      - name: Configurar Java
+      - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Preparar Gradle
+      - name: Instalar Gradle 8.7
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
-      - name: Extrair projeto Android
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes Android
         run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Extrair projeto do launcher
+        run: |
+          mkdir -p launcher_src
           unzip -q GTA_PRO_FACCAO_LAUNCHER_COM_BUILD_NA_NUVEM.zip -d launcher_src
+
+      - name: Verificar projeto
+        run: |
+          test -f launcher_src/settings.gradle.kts
+          test -f launcher_src/app/build.gradle.kts
+          test -f launcher_src/app/src/main/AndroidManifest.xml
 
       - name: Compilar APK
         run: |
-          WRAPPER=$(find launcher_src -type f -name gradlew | head -n 1)
-
-          if [ -z "$WRAPPER" ]; then
-            echo "ERRO: arquivo gradlew nao encontrado no ZIP."
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$WRAPPER")
-
-          cd "$PROJECT_DIR"
-
-          chmod +x gradlew
-
-          ./gradlew --no-daemon assembleDebug
+          gradle -p launcher_src --no-daemon assembleDebug
 
       - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: GTA-PRO-FACCAO-APK
-          path: launcher_src/**/build/outputs/apk/**/*.apk
+          path: launcher_src/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
